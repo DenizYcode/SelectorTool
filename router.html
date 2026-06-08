@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cisco & Meraki Router Selector - Routing</title>
+    <link rel="stylesheet" href="shared.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="shared.js"></script>
+    <style>
+        /* ---- Page-specific: filter colors ---- */
+        :root {
+            --color-type: #007bff; --color-cat: #6f42c1; --color-mod: #fd7e14; --color-users: #20c997;
+            --color-tun: #6610f2; --color-tp: #e83e8c; --color-feat: #198754;
+        }
+        .filter-type { border: 1px solid #cce5ff; background: #f8fbff; }
+        .filter-type .filter-btn.active { border-color: var(--color-type); box-shadow: 0 0 0 1px var(--color-type); font-weight: bold; color: var(--color-type); }
+        .filter-cat { border: 1px solid #e2d9f3; background: #fcfaff; }
+        .filter-cat .filter-btn.active { border-color: var(--color-cat); box-shadow: 0 0 0 1px var(--color-cat); font-weight: bold; color: var(--color-cat); }
+        .filter-mod { border: 1px solid #ffe5d0; background: #fffaf6; }
+        .filter-mod .filter-btn.active { border-color: var(--color-mod); box-shadow: 0 0 0 1px var(--color-mod); font-weight: bold; color: var(--color-mod); }
+        .filter-users { border: 1px solid #d2f4ea; background: #f6fdfa; }
+        .filter-users .filter-btn.active { border-color: var(--color-users); box-shadow: 0 0 0 1px var(--color-users); font-weight: bold; color: var(--color-users); }
+        .filter-tun { border: 1px solid #e0cffc; background: #fbf9ff; }
+        .filter-tun .filter-btn.active { border-color: var(--color-tun); box-shadow: 0 0 0 1px var(--color-tun); font-weight: bold; color: var(--color-tun); }
+        .filter-tp { border: 1px solid #f8d7da; background: #fdf5f6; }
+        .filter-tp .filter-btn.active { border-color: var(--color-tp); box-shadow: 0 0 0 1px var(--color-tp); font-weight: bold; color: var(--color-tp); }
+        .filter-feat { border: 1px solid #d1e7dd; background: #f6fdf9; }
+        .filter-feat .filter-btn.active { border-color: var(--color-feat); box-shadow: 0 0 0 1px var(--color-feat); font-weight: bold; color: var(--color-feat); }
+        .features-grid { grid-template-columns: 1fr 1fr 1fr; }
+        .btn-catalyst-dna { background-color: var(--cisco-blue); }
+        .btn-meraki-sub { background-color: var(--meraki-green); }
+        .switch-family-title.active-title { color: var(--cisco-blue); }
+        .module-more-info { display: none; font-size: 11px; color: #555; margin-top: 6px; background: #f4f6f8; padding: 8px; border-radius: 4px; line-height: 1.4; }
+        .module-more-info.active { display: block; }
+        .mod-info-btn { font-size: 11px; padding: 2px 8px; border: 1px solid #bbb; background: #fff; border-radius: 3px; cursor: pointer; margin-top: 4px; }
+
+        /* ---- Page-specific: sleek router graphics (summary below) ---- */
+        .rt-graphic { padding: 4px 2px; }
+        .rt-body { position: relative; border-radius: 10px; background: #eef1f4; border: 1px solid #d1d5da; border-left: 4px solid var(--cisco-blue); box-shadow: inset 0 -2px 0 rgba(0,0,0,.06), 0 2px 5px rgba(0,0,0,.06); display: flex; align-items: center; gap: 8px; padding: 0 12px; transition: transform .1s, box-shadow .1s; box-sizing: border-box; }
+        .switch-family:hover .rt-body { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,.12); }
+        .rt-body.brand-Meraki { border-left-color: var(--meraki-green); }
+        .rt-body.rack { width: 70%; height: 42px; }
+        .rt-body.desktop { width: 44%; height: 38px; border-radius: 12px; }
+        .rt-body.rugged { width: 56%; height: 48px; background: #2c3e50; border-color: #1a252f; }
+        .rt-body.rugged .rt-tick { background: #8aa0b5; }
+        .rt-led { width: 8px; height: 8px; border-radius: 50%; background: var(--cisco-blue); box-shadow: 0 0 6px rgba(4,159,217,.8); flex-shrink: 0; }
+        .rt-body.brand-Meraki .rt-led { background: var(--meraki-green); box-shadow: 0 0 6px rgba(120,190,32,.8); }
+        .rt-ports { display: flex; gap: 3px; align-items: center; }
+        .rt-tick { width: 5px; height: 14px; background: #aeb6bf; border-radius: 1px; }
+        .rt-bays { display: flex; gap: 4px; margin-left: auto; }
+        .rt-bay { width: 14px; height: 18px; background: #cfd4da; border: 1px solid #b6bcc4; border-radius: 2px; }
+        .rt-body.rugged .rt-bay { background: #46586b; border-color: #3a4a5a; }
+        .rt-ant { position: absolute; top: -10px; left: 12px; display: flex; gap: 5px; }
+        .rt-ant span { width: 4px; height: 12px; background: #95a5a6; border-radius: 2px; }
+        .rt-body.brand-Meraki .rt-ant span { background: var(--meraki-green); }
+        .rt-meta { font-size: 12px; color: #777; line-height: 1.5; margin-top: 8px; }
+        .rt-meta .meta-badge { display: inline-block; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: .5px; padding: 2px 7px; border-radius: 10px; background: #eef0f2; color: #555; margin-right: 5px; }
+        @media (max-width: 1150px) { .rt-body.rack, .rt-body.desktop, .rt-body.rugged { width: 100%; } }
+    </style>
+</head>
+<body>
+
+    <div id="chrome-top"></div>
+
+    <div class="main-container">
+        <div>
+            <div id="active-filters-bar" class="active-filter-bar"></div>
+            <div class="switch-list" id="router-list-container"><p data-i18n="loading">Loading dataset...</p></div>
+        </div>
+
+        <div class="filters">
+            <div class="filter-section filter-type">
+                <h4 data-i18n="filter-type">Router Type</h4>
+                <div class="filter-grid">
+                    <button class="filter-btn" data-filter="type" data-val="Rack" data-i18n="type-rack">Rack</button>
+                    <button class="filter-btn" data-filter="type" data-val="Desktop" data-i18n="type-desktop">Desktop</button>
+                    <button class="filter-btn" data-filter="type" data-val="Rugged" data-i18n="type-rugged">Rugged</button>
+                </div>
+            </div>
+            <div class="filter-section filter-cat">
+                <h4 data-i18n="filter-cat">Deployment Category</h4>
+                <div class="filter-grid">
+                    <button class="filter-btn" data-filter="category" data-val="Small branch" data-i18n="cat-small">Small branch</button>
+                    <button class="filter-btn" data-filter="category" data-val="Mid branch" data-i18n="cat-mid">Mid branch</button>
+                    <button class="filter-btn" data-filter="category" data-val="Large branch" data-i18n="cat-large">Large branch</button>
+                    <button class="filter-btn" data-filter="category" data-val="Aggregation" data-i18n="cat-agg">Aggregation</button>
+                    <button class="filter-btn" data-filter="category" data-val="Data Center/Head End" data-i18n="cat-dc">Data Center</button>
+                    <button class="filter-btn" data-filter="category" data-val="Virtual" data-i18n="cat-virtual">Virtual</button>
+                </div>
+            </div>
+            <div class="filter-section filter-mod">
+                <h4 data-i18n="filter-modular">Modular (Accepts Modules)</h4>
+                <div class="filter-grid">
+                    <button class="filter-btn" data-filter="modular" data-val="Yes" data-i18n="btn-yes">Yes</button>
+                    <button class="filter-btn" data-filter="modular" data-val="No" data-i18n="btn-no">No</button>
+                </div>
+                <h4 style="margin-top:12px;" data-i18n="filter-mod-types">Required Module Types</h4>
+                <div class="filter-grid">
+                    <button class="filter-btn" data-filter="modtype" data-val="PIM">PIM</button>
+                    <button class="filter-btn" data-filter="modtype" data-val="NIM">NIM</button>
+                    <button class="filter-btn" data-filter="modtype" data-val="SM">SM</button>
+                </div>
+            </div>
+            <div class="filter-section filter-users">
+                <h4 data-i18n="filter-users">Number of Devices / Users</h4>
+                <div class="filter-grid">
+                    <button class="filter-btn" data-filter="users" data-val="50">Up to 50</button>
+                    <button class="filter-btn" data-filter="users" data-val="200">Up to 200</button>
+                    <button class="filter-btn" data-filter="users" data-val="500">Up to 500</button>
+                    <button class="filter-btn" data-filter="users" data-val="1000">Up to 1000</button>
+                    <button class="filter-btn" data-filter="users" data-val="5000">5000+</button>
+                </div>
+            </div>
+            <div class="filter-section filter-tun">
+                <h4 data-i18n="filter-tun">Max VPN Tunnels</h4>
+                <div class="filter-grid">
+                    <button class="filter-btn" data-filter="tunnels" data-val="50">Up to 50</button>
+                    <button class="filter-btn" data-filter="tunnels" data-val="250">Up to 250</button>
+                    <button class="filter-btn" data-filter="tunnels" data-val="500">Up to 500</button>
+                    <button class="filter-btn" data-filter="tunnels" data-val="1000">Up to 1000</button>
+                    <button class="filter-btn" data-filter="tunnels" data-val="3000">Up to 3000</button>
+                    <button class="filter-btn" data-filter="tunnels" data-val="5000">5000+</button>
+                </div>
+            </div>
+            <div class="filter-section filter-tp">
+                <h4 data-i18n="filter-fw">Firewall Throughput</h4>
+                <div class="filter-grid">
+                    <button class="filter-btn" data-filter="fw_tp" data-val="10">10 Mbps</button>
+                    <button class="filter-btn" data-filter="fw_tp" data-val="100">100 Mbps</button>
+                    <button class="filter-btn" data-filter="fw_tp" data-val="500">500 Mbps</button>
+                    <button class="filter-btn" data-filter="fw_tp" data-val="1000">1 Gbps</button>
+                    <button class="filter-btn" data-filter="fw_tp" data-val="5000">5 Gbps</button>
+                    <button class="filter-btn" data-filter="fw_tp" data-val="20000">20 Gbps</button>
+                    <button class="filter-btn" data-filter="fw_tp" data-val="50000">50 Gbps</button>
+                    <button class="filter-btn" data-filter="fw_tp" data-val="100000">100 Gbps+</button>
+                </div>
+            </div>
+            <div class="filter-section filter-tp">
+                <h4 data-i18n="filter-sec">Advanced Security Throughput</h4>
+                <div class="filter-grid">
+                    <button class="filter-btn" data-filter="sec_tp" data-val="10">10 Mbps</button>
+                    <button class="filter-btn" data-filter="sec_tp" data-val="100">100 Mbps</button>
+                    <button class="filter-btn" data-filter="sec_tp" data-val="500">500 Mbps</button>
+                    <button class="filter-btn" data-filter="sec_tp" data-val="1000">1 Gbps</button>
+                    <button class="filter-btn" data-filter="sec_tp" data-val="5000">5 Gbps</button>
+                    <button class="filter-btn" data-filter="sec_tp" data-val="20000">20 Gbps</button>
+                    <button class="filter-btn" data-filter="sec_tp" data-val="50000">50 Gbps</button>
+                    <button class="filter-btn" data-filter="sec_tp" data-val="100000">100 Gbps+</button>
+                </div>
+            </div>
+            <div class="filter-section filter-feat">
+                <h4 data-i18n="filter-feat">Features</h4>
+                <div class="filter-grid features-grid">
+                    <button class="filter-btn" data-filter="feature" data-val="Cellular" data-i18n="feat-cellular">Cellular</button>
+                    <button class="filter-btn" data-filter="feature" data-val="SD-WAN" data-i18n="feat-sdwan">SD-WAN</button>
+                    <button class="filter-btn" data-filter="feature" data-val="PoE" data-i18n="feat-poe">PoE</button>
+                    <button class="filter-btn" data-filter="feature" data-val="NGFW" data-i18n="feat-ngfw">NGFW</button>
+                    <button class="filter-btn" data-filter="feature" data-val="Redundant PSU" data-i18n="feat-redpsu">Redundant PSU</button>
+                    <button class="filter-btn" data-filter="feature" data-val="Fans" data-i18n="feat-fans">Fans</button>
+                    <button class="filter-btn" data-filter="feature" data-val="Multigig" data-i18n="feat-multigig">Multigig</button>
+                </div>
+            </div>
+            <div class="filter-section info-section">
+                <h4 data-i18n="info-title">Routing &amp; SD-WAN Licensing</h4>
+                <div class="info-buttons">
+                    <a href="https://www.cisco.com/c/en/us/products/software/dna-subscription-routing/index.html" target="_blank" class="info-btn btn-catalyst-dna" data-i18n="info-dna">DNA Routing/SDWAN</a>
+                    <a href="https://documentation.meraki.com/MX/MX_Licensing" target="_blank" class="info-btn btn-meraki-sub" data-i18n="info-meraki">Meraki MX Licensing</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="chrome-feedback"></div>
+
+<script>
+    const DATA_VER = '1';
+    const ROUTER_CSV = 'data/routers.csv?v=' + DATA_VER;
+    const MODULE_CSV = 'data/router-modules.csv?v=' + DATA_VER;
+
+    const pageI18n = {
+        en: {
+            'filter-type': 'Router Type', 'type-rack': 'Rack', 'type-desktop': 'Desktop', 'type-rugged': 'Rugged',
+            'filter-cat': 'Deployment Category', 'cat-small': 'Small branch', 'cat-mid': 'Mid branch', 'cat-large': 'Large branch', 'cat-dc': 'Data Center', 'cat-agg': 'Aggregation', 'cat-virtual': 'Virtual',
+            'filter-users': 'Number of Devices / Users', 'filter-tun': 'Max VPN Tunnels', 'filter-fw': 'Firewall Throughput', 'filter-sec': 'Advanced Security Throughput',
+            'filter-modular': 'Modular (Accepts Modules)', 'btn-yes': 'Yes', 'btn-no': 'No', 'filter-mod-types': 'Required Module Types',
+            'filter-feat': 'Features', 'feat-cellular': 'Cellular', 'feat-sdwan': 'SD-WAN', 'feat-poe': 'PoE', 'feat-ngfw': 'NGFW', 'feat-redpsu': 'Redundant PSU', 'feat-fans': 'Fans', 'feat-multigig': 'Multigig',
+            'info-title': 'Routing & SD-WAN Licensing', 'info-dna': 'DNA Routing/SDWAN', 'info-meraki': 'Meraki MX Licensing',
+            'no-match': 'No routers match the selected filters.', 'drawer-select': 'Select Base Model:', 'drawer-modules': 'Compatible Modules:',
+            'label-wan': 'WAN:', 'label-lan': 'LAN:', 'label-tp': 'Throughput:', 'label-sectp': 'Adv. Sec Throughput:',
+            'label-tun': 'Max Tunnels:', 'label-users': 'Recommended Users:', 'label-desc': 'Description:', 'label-note': 'Note:',
+            'btn-moreinfo': 'More Info', 'mod-slots': 'Slots', 'mod-max': 'Max'
+        },
+        tr: {
+            'filter-type': 'Yönlendirici Tipi', 'type-rack': 'Rack', 'type-desktop': 'Masaüstü', 'type-rugged': 'Zorlu Ortam (Rugged)',
+            'filter-cat': 'Dağıtım Kategorisi', 'cat-small': 'Küçük Şube', 'cat-mid': 'Orta Şube', 'cat-large': 'Büyük Şube', 'cat-dc': 'Veri Merkezi', 'cat-agg': 'Toplama (Aggregation)', 'cat-virtual': 'Sanal (Virtual)',
+            'filter-users': 'Cihaz / Kullanıcı Sayısı', 'filter-tun': 'Maksimum VPN Tüneli', 'filter-fw': 'Güvenlik Duvarı Verimi (FW)', 'filter-sec': 'Gelişmiş Güvenlik Verimi',
+            'filter-modular': 'Modüler (Modül Destekler)', 'btn-yes': 'Evet', 'btn-no': 'Hayır', 'filter-mod-types': 'Gerekli Modül Tipleri',
+            'filter-feat': 'Özellikler', 'feat-cellular': 'Hücresel', 'feat-sdwan': 'SD-WAN', 'feat-poe': 'PoE', 'feat-ngfw': 'NGFW', 'feat-redpsu': 'Yedek PSU', 'feat-fans': 'Fanlı', 'feat-multigig': 'Multigigabit',
+            'info-title': 'Yönlendirme ve SD-WAN Lisanslama', 'info-dna': 'DNA Yönlendirme/SDWAN', 'info-meraki': 'Meraki MX Lisanslama',
+            'no-match': 'Seçilen filtrelere uygun yönlendirici bulunamadı.', 'drawer-select': 'Temel Modeli Seçin:', 'drawer-modules': 'Uyumlu Modüller:',
+            'label-wan': 'WAN:', 'label-lan': 'LAN:', 'label-tp': 'Verim:', 'label-sectp': 'Gelişmiş Güv. Verimi:',
+            'label-tun': 'Maks Tünel:', 'label-users': 'Önerilen Kullanıcı:', 'label-desc': 'Açıklama:', 'label-note': 'Not:',
+            'btn-moreinfo': 'Daha Fazla Bilgi', 'mod-slots': 'Yuva', 'mod-max': 'Maks'
+        }
+    };
+
+    const valToKey = {
+        'Rack': 'type-rack', 'Desktop': 'type-desktop', 'Rugged': 'type-rugged',
+        'Small branch': 'cat-small', 'Mid branch': 'cat-mid', 'Large branch': 'cat-large', 'Data Center/Head End': 'cat-dc', 'Aggregation': 'cat-agg', 'Virtual': 'cat-virtual',
+        'Cellular': 'feat-cellular', 'SD-WAN': 'feat-sdwan', 'PoE': 'feat-poe', 'NGFW': 'feat-ngfw', 'Redundant PSU': 'feat-redpsu', 'Fans': 'feat-fans', 'Multigig': 'feat-multigig',
+        'Yes': 'btn-yes', 'No': 'btn-no'
+    };
+
+    let allRouters = [];
+    let allModules = [];
+    let activeFilters = { type: [], category: [], users: [], tunnels: [], fw_tp: [], sec_tp: [], modular: [], modtype: [], feature: [] };
+    let selectedSupertype = null, selectedSKU = null, moduleCounts = {};
+
+    function parseThroughput(str) {
+        if (!str || str.toLowerCase() === 'n/a') return 0;
+        let num = parseFloat(str.replace(/[^\d.]/g, ''));
+        if (str.toLowerCase().includes('gbps')) return num * 1000;
+        return num || 0;
+    }
+    function parseNumericStr(str) {
+        if (!str || str.toLowerCase() === 'n/a') return 0;
+        return parseInt(str.replace(/[^\d]/g, '')) || 0;
+    }
+
+    function parseRow(row) {
+        // BUG FIX: the CSV column is "Throughput" (was previously read as "Firewall Throughput").
+        let fwStr = (row['Throughput'] || '').trim();
+        let secStr = (row['Advanced Security Throughput'] || '').trim();
+        let pimSlots = parseInt(row['PIM Modules']) || 0;
+        let nimSlots = parseInt(row['NIM Modules']) || 0;
+        let smSlots = parseInt(row['SM Modules']) || 0;
+
+        let feats = (row['Features'] || '').split(',').map(s => s.trim()).filter(Boolean).map(f => {
+            let l = f.toLowerCase();
+            if (l.includes('ngfw')) return 'NGFW';
+            if (l.includes('redundant psu')) return 'Redundant PSU';
+            if (l.includes('fan') && !l.includes('fanless')) return 'Fans';
+            if (l.includes('multigig')) return 'Multigig';
+            if (l === 'cellular') return 'Cellular';
+            if (l === 'sd-wan' || l === 'sdwan') return 'SD-WAN';
+            if (l === 'poe') return 'PoE';
+            return f;
+        });
+        if ((row['SD-WAN'] || '').toLowerCase() === 'yes' && !feats.includes('SD-WAN')) feats.push('SD-WAN');
+        let cell = (row['Cellular'] || '').trim().toLowerCase();
+        if (cell && !['n/a', 'no', 'none'].includes(cell) && !feats.includes('Cellular')) feats.push('Cellular');
+
+        let lo = parseInt(row['List Order'], 10);
+        return {
+            family: row['Family'] || 'Unknown',
+            supertype: row['Supertype'] || 'Unknown',
+            model: row['Model'] || 'Unknown',
+            type: row['Device Type'] || 'Rack',
+            category: row['Deployment Category'] || '',
+            unified: row['Unified architecture'] || 'No',
+            wanDetail: (row['WAN ports detail'] || '').trim(),
+            lanDetail: (row['LAN ports detail'] || '').trim(),
+            fwTpStr: fwStr, fwTpRaw: parseThroughput(fwStr),
+            secTpStr: secStr, secTpRaw: parseThroughput(secStr),
+            tunnelsStr: (row['Recommended Max VPN Tunnels'] || '').trim(), tunnelsRaw: parseNumericStr(row['Recommended Max VPN Tunnels']),
+            usersStr: (row['Client Recommendation'] || '').trim(), usersRaw: parseNumericStr(row['Client Recommendation']),
+            isModular: (pimSlots > 0 || nimSlots > 0 || smSlots > 0) ? 'Yes' : 'No',
+            hasAntenna: (row['Antenna'] || '').trim().toLowerCase() === 'yes',
+            pimMax: pimSlots, nimMax: nimSlots, smMax: smSlots,
+            features: feats,
+            description: (row['Description'] || '').trim(),
+            notes: (row['Notes'] || '').trim(),
+            listOrder: isNaN(lo) ? 999 : lo,
+            datasheet: row['Datasheet'] || '#'
+        };
+    }
+
+    function brandOf(m) {
+        return (m.family.toUpperCase().includes('MERAKI') || m.supertype.toUpperCase().includes('MX')) ? 'Meraki' : 'Catalyst';
+    }
+    function typeBucket(t) {
+        let l = (t || '').toLowerCase();
+        if (l.includes('desktop')) return 'desktop';
+        if (l.includes('rugged')) return 'rugged';
+        return 'rack';
+    }
+
+    function meetsNumeric(val, buckets) {
+        if (!buckets.length) return true;
+        return buckets.some(b => val >= parseInt(b));
+    }
+
+    function mgmtPass(m) {
+        if (Shared.mgmt === 'On-Prem') return !(m.family.toUpperCase().includes('MERAKI') || m.supertype.toUpperCase().includes('MX'));
+        if (Shared.mgmt === 'Cloud') return m.family.toUpperCase().includes('MERAKI') || m.supertype.toUpperCase().includes('MX');
+        if (Shared.mgmt === 'Unified') return m.unified === 'Yes';
+        return true;
+    }
+
+    function modelPasses(m) {
+        if (activeFilters.type.length && !activeFilters.type.includes(typeBucket(m.type) === 'rack' ? 'Rack' : typeBucket(m.type) === 'desktop' ? 'Desktop' : 'Rugged')) return false;
+        if (activeFilters.category.length && !activeFilters.category.some(c => m.category.includes(c))) return false;
+        if (!meetsNumeric(m.usersRaw, activeFilters.users)) return false;
+        if (!meetsNumeric(m.tunnelsRaw, activeFilters.tunnels)) return false;
+        if (!meetsNumeric(m.fwTpRaw, activeFilters.fw_tp)) return false;
+        if (!meetsNumeric(m.secTpRaw, activeFilters.sec_tp)) return false;
+        if (activeFilters.modular.length && !activeFilters.modular.includes(m.isModular)) return false;
+        if (activeFilters.modtype.length) {
+            if (m.isModular !== 'Yes') return false;
+            let ok = activeFilters.modtype.some(mt => (mt === 'PIM' && m.pimMax > 0) || (mt === 'NIM' && m.nimMax > 0) || (mt === 'SM' && m.smMax > 0));
+            if (!ok) return false;
+        }
+        if (activeFilters.feature.length && !activeFilters.feature.every(f => m.features.includes(f))) return false;
+        return true;
+    }
+
+    function renderRouters() {
+        Shared.updateActiveFilterBar();
+        const container = document.getElementById('router-list-container');
+        container.innerHTML = '';
+        const supertypes = [...new Set(allRouters.map(m => m.supertype))];
+        let valid = false;
+
+        supertypes.forEach(st => {
+            let members = allRouters.filter(m => m.supertype === st && mgmtPass(m) && modelPasses(m));
+            if (!members.length) return;
+            if (st === selectedSupertype && members.some(m => m.model === selectedSKU)) valid = true;
+            container.appendChild(createFamilyHTML(st, members));
+        });
+
+        if (!valid) { selectedSupertype = null; selectedSKU = null; moduleCounts = {}; }
+        if (!container.innerHTML) container.innerHTML = '<p>' + Shared.t('no-match') + '</p>';
+        else if (selectedSupertype && selectedSKU) {
+            const drawer = document.getElementById('drawer-' + Shared.cssId(selectedSupertype));
+            if (drawer) {
+                drawer.classList.add('active');
+                const title = drawer.parentElement.querySelector('.switch-family-title');
+                if (title) title.classList.add('active-title');
+                buildSKUDetailsUI(selectedSKU, selectedSupertype);
+            }
+        }
+    }
+
+    function getRtGraphic(m) {
+        const brand = brandOf(m);
+        const tb = typeBucket(m.type);
+        let ticks = '<div class="rt-ports">' + '<div class="rt-tick"></div>'.repeat(tb === 'desktop' ? 6 : 8) + '</div>';
+        let bayCount = Math.min((m.pimMax || 0) + (m.nimMax || 0) + (m.smMax || 0), 6);
+        let bays = bayCount > 0 ? '<div class="rt-bays">' + '<div class="rt-bay"></div>'.repeat(bayCount) + '</div>' : '';
+        let ant = m.hasAntenna ? '<div class="rt-ant"><span></span><span></span></div>' : '';
+        let body = '<div class="rt-body ' + tb + ' brand-' + brand + '">' + ant + '<div class="rt-led"></div>' + ticks + bays + '</div>';
+
+        let bits = [];
+        bits.push('<span class="meta-badge">' + (Shared.t('type-' + tb) || m.type) + '</span>');
+        if (m.category) bits.push(translateCat(m.category));
+        if (m.fwTpStr && m.fwTpStr !== 'N/A') bits.push('FW ' + m.fwTpStr);
+        let cellBadge = m.features.includes('Cellular') ? ' <span class="meta-badge">' + Shared.t('feat-cellular') + '</span>' : '';
+        return '<div class="rt-graphic">' + body + '<div class="rt-meta">' + bits.join(' &middot; ') + cellBadge + '</div></div>';
+    }
+
+    function translateCat(cat) {
+        if (valToKey[cat]) return Shared.t(valToKey[cat]);
+        return cat;
+    }
+
+    function createFamilyHTML(supertype, members) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'switch-family';
+        const id = Shared.cssId(supertype);
+        wrapper.innerHTML =
+            '<div onclick="toggleDrawer(\'' + id + '\')"><div class="switch-family-title">' + supertype + '</div>' + getRtGraphic(members[0]) + '</div>' +
+            '<div class="drawer" id="drawer-' + id + '"><div style="font-weight:bold;margin-bottom:10px;">' + Shared.t('drawer-select') + '</div>' +
+                '<div class="sku-list">' +
+                    members.map(m => {
+                        let sel = m.model === selectedSKU ? 'selected-' + brandOf(m) : '';
+                        return '<button class="sku-btn ' + sel + '" onclick="selectSKU(\'' + encodeURIComponent(m.model) + '\',\'' + id + '\')">' + m.model + '</button>';
+                    }).join('') +
+                '</div><div id="details-' + id + '" class="drawer-details ' + (selectedSKU ? '' : 'hidden') + '"></div></div>';
+        return wrapper;
+    }
+
+    window.toggleDrawer = function (id) {
+        const drawer = document.getElementById('drawer-' + id);
+        drawer.classList.toggle('active');
+        drawer.parentElement.querySelector('.switch-family-title').classList.toggle('active-title');
+    };
+
+    window.selectSKU = function (modelEnc, id) {
+        const model = decodeURIComponent(modelEnc);
+        const m = allRouters.find(r => r.model === model);
+        selectedSupertype = m.supertype; selectedSKU = model; moduleCounts = {};
+        const drawer = document.getElementById('drawer-' + id);
+        drawer.querySelectorAll('.sku-btn').forEach(b => b.classList.remove('selected-Meraki', 'selected-Catalyst'));
+        drawer.querySelectorAll('.sku-btn').forEach(b => { if (b.textContent === model) b.classList.add('selected-' + brandOf(m)); });
+        buildSKUDetailsUI(model, id);
+    };
+
+    window.toggleMoreInfo = function (safeId) {
+        const d = document.getElementById('moreinfo-' + safeId);
+        if (d) d.classList.toggle('active');
+    };
+
+    function buildSKUDetailsUI(modelName, id) {
+        const details = document.getElementById('details-' + id);
+        if (!details) return;
+        const m = allRouters.find(r => r.model === modelName);
+        details.classList.remove('hidden');
+
+        let html = '<a href="' + m.datasheet + '" class="datasheet-link" target="_blank">Datasheet &rarr;</a>';
+        if (m.fwTpStr && m.fwTpStr !== 'N/A') html += '<p><strong>' + Shared.t('label-tp') + '</strong> ' + m.fwTpStr + '</p>';
+        if (m.secTpStr && m.secTpStr !== 'N/A') html += '<p><strong>' + Shared.t('label-sectp') + '</strong> ' + m.secTpStr + '</p>';
+        let ut = [];
+        if (m.usersStr && m.usersStr !== 'N/A') ut.push('<strong>' + Shared.t('label-users') + '</strong> ' + m.usersStr);
+        if (m.tunnelsStr && m.tunnelsStr !== 'N/A') ut.push('<strong>' + Shared.t('label-tun') + '</strong> ' + m.tunnelsStr);
+        if (ut.length) html += '<p>' + ut.join(' &nbsp; | &nbsp; ') + '</p>';
+        if (m.wanDetail && m.wanDetail !== 'N/A') html += '<p><strong>' + Shared.t('label-wan') + '</strong> ' + m.wanDetail + '</p>';
+        if (m.lanDetail && m.lanDetail !== 'N/A') html += '<p><strong>' + Shared.t('label-lan') + '</strong> ' + m.lanDetail + '</p>';
+        if (m.description && m.description !== 'N/A') html += '<p><strong>' + Shared.t('label-desc') + '</strong> ' + m.description + '</p>';
+        if (m.notes) html += '<div class="notes-section"><strong>' + Shared.t('label-note') + '</strong> ' + m.notes + '</div>';
+
+        let comp = allModules.filter(mod => mod.supported.some(sup => selectedSupertype.includes(sup) || modelName.includes(sup)));
+        if (m.isModular === 'Yes' && comp.length) {
+            html += '<div class="module-section"><strong>' + Shared.t('drawer-modules') + '</strong>';
+            if (m.pimMax > 0) html += renderModuleGroup(comp.filter(x => x.type === 'PIM'), 'PIM', m.pimMax, id);
+            if (m.nimMax > 0) html += renderModuleGroup(comp.filter(x => x.type === 'NIM'), 'NIM', m.nimMax, id);
+            if (m.smMax > 0) html += renderModuleGroup(comp.filter(x => x.type === 'SM'), 'SM', m.smMax, id);
+            html += '</div>';
+        }
+
+        html += '<div id="sku-bar-' + id + '" class="dynamic-sku-bar"></div>';
+        details.innerHTML = html;
+        updateSkuBar(id);
+    }
+
+    function renderModuleGroup(mods, typeLabel, maxLimit, id) {
+        if (!mods.length) return '';
+        let h = '<div style="margin-top:10px;font-weight:bold;font-size:12px;color:#555;">' + typeLabel + ' ' + Shared.t('mod-slots') + ' (' + Shared.t('mod-max') + ': ' + maxLimit + ')</div>';
+        mods.forEach(mod => {
+            let safeId = Shared.cssId(mod.name);
+            let count = moduleCounts[mod.name] || 0;
+            h += '<div class="module-row"><div style="flex:1;padding-right:15px;">' +
+                '<strong>' + mod.name + '</strong> <span style="font-size:11px;color:#777;">(' + mod.type + ')</span>' +
+                '<div><button class="mod-info-btn" onclick="toggleMoreInfo(\'' + safeId + '\')">' + Shared.t('btn-moreinfo') + '</button></div>' +
+                '<div id="moreinfo-' + safeId + '" class="module-more-info">' + (mod.layman || '') +
+                '<br>Cellular: ' + mod.cellular + ' | Voice: ' + mod.voice +
+                (mod.notes ? '<br><em>' + mod.notes + '</em>' : '') +
+                (mod.datasheet && mod.datasheet !== '#' ? '<br><a href="' + mod.datasheet + '" target="_blank" style="color:var(--cisco-blue);">Datasheet &rarr;</a>' : '') +
+                '</div></div>' +
+                '<div class="lc-controls"><button class="lc-btn" onclick="updateModule(-1,\'' + encodeURIComponent(mod.name) + '\',\'' + mod.type + '\',' + maxLimit + ',\'' + safeId + '\',\'' + id + '\')">-</button>' +
+                '<span id="mc-' + safeId + '">' + count + '</span>' +
+                '<button class="lc-btn" onclick="updateModule(1,\'' + encodeURIComponent(mod.name) + '\',\'' + mod.type + '\',' + maxLimit + ',\'' + safeId + '\',\'' + id + '\')">+</button></div></div>';
+        });
+        h += '<div id="mod-error-' + typeLabel + '-' + id + '" class="error-text">' + typeLabel + ' (' + maxLimit + ')</div>';
+        return h;
+    }
+
+    window.updateModule = function (change, nameEnc, modType, maxLimit, safeId, id) {
+        const name = decodeURIComponent(nameEnc);
+        let totalOfType = 0;
+        for (let n in moduleCounts) {
+            let md = allModules.find(x => x.name === n);
+            if (md && md.type === modType) totalOfType += moduleCounts[n];
+        }
+        const err = document.getElementById('mod-error-' + modType + '-' + id);
+        if (change > 0 && totalOfType >= maxLimit) { if (err) err.style.display = 'block'; return; }
+        if (err) err.style.display = 'none';
+        let n = (moduleCounts[name] || 0) + change;
+        if (n < 0) n = 0;
+        moduleCounts[name] = n;
+        document.getElementById('mc-' + safeId).textContent = n;
+        updateSkuBar(id);
+    };
+
+    function updateSkuBar(id) {
+        let sku = selectedSKU || '';
+        for (let [name, count] of Object.entries(moduleCounts)) for (let i = 0; i < count; i++) sku += ' + ' + name;
+        const bar = document.getElementById('sku-bar-' + id);
+        if (bar) bar.textContent = 'SKU: ' + sku;
+    }
+
+    function pageReset() {
+        Shared.clearFilterUI();
+        selectedSupertype = null; selectedSKU = null; moduleCounts = {};
+        renderRouters();
+    }
+
+    Shared.initPage({
+        active: 'routing',
+        mgmtButtons: ['ALL', 'On-Prem', 'Cloud', 'Unified'],
+        pageI18n: pageI18n,
+        valToKey: valToKey,
+        activeFilters: activeFilters,
+        exclusiveFilters: ['modular'],
+        render: renderRouters,
+        reset: pageReset,
+        onReady: function () {
+            Promise.all([Shared.loadCsv(ROUTER_CSV), Shared.loadCsv(MODULE_CSV)]).then(function (res) {
+                allRouters = res[0].filter(r => (r['Model'] || '').trim()).map(parseRow);
+                allRouters.sort((a, b) => a.listOrder - b.listOrder || a.supertype.localeCompare(b.supertype) || a.model.localeCompare(b.model));
+                allModules = res[1].filter(r => (r['Module name'] || '').trim()).map(row => ({
+                    name: (row['Module name'] || '').trim(),
+                    type: (row['Module type'] || '').trim(),
+                    supported: (row['Supported router models'] || '').split(',').map(s => s.trim()).filter(Boolean),
+                    layman: (row['Layman description'] || '').trim(),
+                    voice: (row['Voice'] || 'No').trim(),
+                    cellular: (row['5G/LTE'] || 'No').trim(),
+                    notes: (row['Notes'] || '').trim(),
+                    datasheet: (row['Datasheet'] || '#').trim() || '#'
+                }));
+                renderRouters();
+            }).catch(function () {
+                document.getElementById('router-list-container').innerHTML = '<p style="color:#c00;">' + Shared.t('load-error') + '</p>';
+            });
+        }
+    });
+</script>
+</body>
+</html>
