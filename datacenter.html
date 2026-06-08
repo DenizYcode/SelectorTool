@@ -21,13 +21,13 @@
         .filter-dlspeed .filter-btn.active { border-color: var(--color-dlspeed); box-shadow: 0 0 0 1px var(--color-dlspeed); font-weight: bold; color: var(--color-dlspeed); }
         .filter-uplink { border: 1px solid #e0cffc; background: #fbf9ff; }
         .filter-uplink .filter-btn.active { border-color: var(--color-uplink); box-shadow: 0 0 0 1px var(--color-uplink); font-weight: bold; color: var(--color-uplink); }
-        .filter-os { border: 1px solid #d2f4ea; background: #f6fdfa; }
-        .filter-os .filter-btn.active { border-color: var(--color-os); box-shadow: 0 0 0 1px var(--color-os); font-weight: bold; color: var(--color-os); }
+        .filter-usecase { border: 1px solid #d2f4ea; background: #f6fdfa; }
+        .filter-usecase .filter-btn.active { border-color: var(--color-os); box-shadow: 0 0 0 1px var(--color-os); font-weight: bold; color: var(--color-os); }
         .filter-feat { border: 1px solid #d1e7dd; background: #f6fdf9; }
         .filter-feat .filter-btn.active { border-color: var(--color-feat); box-shadow: 0 0 0 1px var(--color-feat); font-weight: bold; color: var(--color-feat); }
         .features-grid { grid-template-columns: 1fr 1fr; }
-        .btn-nexus-info { background-color: var(--cisco-blue); }
-        .btn-san-info { background-color: var(--san-teal); }
+        .btn-nexus-info { background-color: #1e3a8a; }
+        .btn-san-info { background-color: #6c757d; }
         .switch-family-title.active-title { color: var(--cisco-blue); }
 
         /* ---- Page-specific: Data Center graphics ---- */
@@ -38,14 +38,23 @@
         .port-group.g-24 { grid-template-columns: repeat(24, 1fr); }
         .port { width: 6px; height: 6px; background-color: #999; border-radius: 1px; }
         .port.uplink { background-color: #444; }
-        .css-switch.dc-fixed { width: 70%; height: 42px; background-color: #2c3e50; border-color: #1a252f; }
-        .css-switch.dc-fixed .port { background-color: #8aa0b5; }
-        .css-switch.dc-fixed .port.uplink { background-color: #cfd8e3; }
-        .css-switch.dc-fixed.nexus { border-left: 4px solid var(--cisco-blue); }
-        .css-switch.dc-fixed.san { border-left: 4px solid var(--san-teal); }
+        .css-switch.dc-fixed { width: 70%; height: 42px; background-color: #3a3f44; border-color: #222; }
+        .css-switch.dc-fixed .port { background-color: #aab2bb; }
+        .css-switch.dc-fixed .port.uplink { background-color: #e0e4e8; }
+        .css-switch.dc-fixed.nexus { background-color: #1e2a4a; border-color: #0f1a33; border-left: 4px solid #3b6fd4; }
+        .css-switch.dc-fixed.nexus .port { background-color: #6f8fd6; }
+        .css-switch.dc-fixed.nexus .port.uplink { background-color: #cdd9f4; }
+        .css-switch.dc-fixed.san { background-color: #3a3f44; border-color: #222; border-left: 4px solid #adb5bd; }
         .css-switch.chassis { width: 70%; height: 86px; flex-direction: row; padding: 4px; gap: 4px; background-color: #3a3f44; border: 1px solid #222; }
-        .css-switch.chassis.nexus { border-left: 4px solid var(--cisco-blue); }
-        .css-switch.chassis.san { border-left: 4px solid var(--san-teal); }
+        .css-switch.chassis.nexus { background-color: #1e2a4a; border-color: #0f1a33; border-left: 4px solid #3b6fd4; }
+        .css-switch.chassis.san { background-color: #3a3f44; border-color: #222; border-left: 4px solid #adb5bd; }
+        /* Series colour identity: Nexus = dark blue, MDS/SAN = grey */
+        .mgmt-btn.btn-nexus { border-color: #1e3a8a; color: #1e3a8a; }
+        .mgmt-btn.btn-nexus.active { background: #1e3a8a; color: #fff; }
+        .mgmt-btn.btn-san { border-color: #6c757d; color: #6c757d; }
+        .mgmt-btn.btn-san.active { background: #6c757d; color: #fff; }
+        .sku-btn.selected-Nexus { background: #1e3a8a; border-color: #1e3a8a; color: #fff; }
+        .sku-btn.selected-SAN { background: #6c757d; border-color: #6c757d; color: #fff; }
         .chassis-sup { width: 34px; background: #5a6066; border-radius: 2px; display: flex; flex-direction: column; gap: 3px; padding: 4px; box-sizing: border-box; border-right: 1px solid #2a2e31; }
         .chassis-sup-module { width: 100%; height: 13px; background: #8a9298; border-radius: 1px; }
         .chassis-lc-area { flex: 1; display: flex; flex-direction: column; gap: 3px; }
@@ -106,11 +115,15 @@
                     <button class="filter-btn" data-filter="uplink" data-val="FC">FC</button>
                 </div>
             </div>
-            <div class="filter-section filter-os">
-                <h4 data-i18n="filter-os">OS / Mode</h4>
-                <div class="filter-grid">
-                    <button class="filter-btn" data-filter="os" data-val="NX-OS">NX-OS</button>
-                    <button class="filter-btn" data-filter="os" data-val="ACI">ACI</button>
+            <div class="filter-section filter-usecase">
+                <h4 data-i18n="filter-usecase">Use Case</h4>
+                <div class="filter-grid features-grid">
+                    <button class="filter-btn" data-filter="usecase" data-val="AI/ML" data-i18n="uc-ai">AI/ML</button>
+                    <button class="filter-btn" data-filter="usecase" data-val="Spine" data-i18n="uc-spine">Spine</button>
+                    <button class="filter-btn" data-filter="usecase" data-val="Leaf" data-i18n="uc-leaf">Leaf/ToR</button>
+                    <button class="filter-btn" data-filter="usecase" data-val="Access" data-i18n="uc-access">Access</button>
+                    <button class="filter-btn" data-filter="usecase" data-val="SAN" data-i18n="uc-san">SAN/Storage</button>
+                    <button class="filter-btn" data-filter="usecase" data-val="Services" data-i18n="uc-services">Services</button>
                 </div>
             </div>
             <div class="filter-section filter-feat">
@@ -123,10 +136,9 @@
                 </div>
             </div>
             <div class="filter-section info-section">
-                <h4 data-i18n="info-title">Learn more about Data Center platforms</h4>
+                <h4 data-i18n="info-title">Learn more about Nexus/MDS licensing</h4>
                 <div class="info-buttons">
-                    <a href="https://www.cisco.com/site/us/en/products/networking/cloud-networking-switches/nexus-9000-series/index.html" target="_blank" class="info-btn btn-nexus-info" data-i18n="info-nexus">Cisco Nexus 9000</a>
-                    <a href="https://www.cisco.com/site/us/en/products/networking/data-center-switches/mds-9000-series/index.html" target="_blank" class="info-btn btn-san-info" data-i18n="info-san">Cisco MDS 9000</a>
+                    <a href="https://www.cisco.com/site/us/en/products/networking/software/data-center-networking-subscriptions.html" target="_blank" class="info-btn btn-nexus-info" data-i18n="info-lic">Nexus / MDS Licensing</a>
                 </div>
             </div>
         </div>
@@ -141,18 +153,20 @@
 
     const pageI18n = {
         en: {
-            'filter-devtype': 'Form Factor', 'filter-role': 'Role', 'filter-dlspeed': 'Downlink Speed', 'filter-uplink': 'Max Uplink Speed', 'filter-os': 'OS / Mode', 'filter-feat': 'Features',
+            'filter-devtype': 'Form Factor', 'filter-role': 'Role', 'filter-dlspeed': 'Downlink Speed', 'filter-uplink': 'Max Uplink Speed', 'filter-usecase': 'Use Case', 'filter-feat': 'Features',
+            'uc-ai': 'AI/ML', 'uc-spine': 'Spine', 'uc-leaf': 'Leaf/ToR', 'uc-access': 'Access', 'uc-san': 'SAN/Storage', 'uc-services': 'Services',
             'filter-dev-fixed': 'Fixed', 'filter-dev-modular': 'Modular',
-            'info-title': 'Learn more about Data Center platforms', 'info-nexus': 'Cisco Nexus 9000', 'info-san': 'Cisco MDS 9000',
+            'info-title': 'Learn more about Nexus/MDS licensing', 'info-lic': 'Nexus / MDS Licensing',
             'drawer-modules': 'Modules (Line Cards / Supervisors / Fabric):',
             'label-role': 'Role:', 'label-form': 'Form Factor:', 'label-ru': 'Rack Units:', 'label-dl': 'Downlink Speeds:', 'label-ul': 'Max Uplink:', 'label-supfab': 'Supervisor / Fabric:', 'label-tp': 'Throughput:', 'label-os': 'OS / Mode:', 'label-maxport': 'Max Ports:', 'label-feat': 'Features:', 'label-use': 'Use Case:', 'label-desc': 'Description:', 'label-sku': 'SKU:',
             'pool-note-a': 'All cards below share', 'pool-note-b': 'slots.',
             'limit-reached': 'All slots are used!', 'none-listed': 'No modules listed for this chassis.'
         },
         tr: {
-            'filter-devtype': 'Form Faktörü', 'filter-role': 'Rol', 'filter-dlspeed': 'Downlink Hızı', 'filter-uplink': 'Maks Uplink Hızı', 'filter-os': 'OS / Mod', 'filter-feat': 'Özellikler',
+            'filter-devtype': 'Form Faktörü', 'filter-role': 'Rol', 'filter-dlspeed': 'Downlink Hızı', 'filter-uplink': 'Maks Uplink Hızı', 'filter-usecase': 'Kullanım Alanı', 'filter-feat': 'Özellikler',
+            'uc-ai': 'AI/ML', 'uc-spine': 'Spine', 'uc-leaf': 'Leaf/ToR', 'uc-access': 'Erişim', 'uc-san': 'SAN/Depolama', 'uc-services': 'Servisler',
             'filter-dev-fixed': 'Sabit', 'filter-dev-modular': 'Modüler',
-            'info-title': 'Veri Merkezi platformları hakkında daha fazla bilgi edinin', 'info-nexus': 'Cisco Nexus 9000', 'info-san': 'Cisco MDS 9000',
+            'info-title': 'Nexus/MDS lisanslama hakkında daha fazla bilgi edinin', 'info-lic': 'Nexus / MDS Lisanslama',
             'drawer-modules': 'Modüller (Hat Kartları / Süpervizör / Fabric):',
             'label-role': 'Rol:', 'label-form': 'Form Faktörü:', 'label-ru': 'Rack Birimi:', 'label-dl': 'Downlink Hızları:', 'label-ul': 'Maks Uplink:', 'label-supfab': 'Süpervizör / Fabric:', 'label-tp': 'Verim:', 'label-os': 'OS / Mod:', 'label-maxport': 'Maks Port:', 'label-feat': 'Özellikler:', 'label-use': 'Kullanım Alanı:', 'label-desc': 'Açıklama:', 'label-sku': 'SKU:',
             'pool-note-a': 'Aşağıdaki tüm kartlar', 'pool-note-b': 'yuvayı paylaşır.',
@@ -160,10 +174,10 @@
         }
     };
 
-    const valToKey = { 'Fixed': 'filter-dev-fixed', 'Modular': 'filter-dev-modular' };
+    const valToKey = { 'Fixed': 'filter-dev-fixed', 'Modular': 'filter-dev-modular', 'AI/ML': 'uc-ai', 'Spine': 'uc-spine', 'Leaf': 'uc-leaf', 'Access': 'uc-access', 'SAN': 'uc-san', 'Services': 'uc-services' };
 
     let allSwitches = [], allModules = [];
-    let activeFilters = { devtype: [], role: [], dlspeed: [], uplink: [], os: [], feature: [] };
+    let activeFilters = { devtype: [], role: [], dlspeed: [], uplink: [], usecase: [], feature: [] };
     let selectedSeries = null, selectedModel = null, cardCounts = {};
 
     /* ---------- Normalization helpers ---------- */
@@ -173,6 +187,16 @@
     function speedTokens(str) { let o = new Set(); (str || '').replace(/Gbps|G\b/gi, 'G').split(/[^0-9.]+/).forEach(n => { n = n.trim(); if (n && !isNaN(n)) o.add(n + 'G'); }); return [...o]; }
     function uplinkTokens(str) { let u = (str || '').toLowerCase(), o = []; if (u.includes('800')) o.push('800G'); if (u.includes('400')) o.push('400G'); if (u.includes('100')) o.push('100G'); if (u.includes('fc')) o.push('FC'); return o; }
     function osModes(str) { let s = (str || '').toLowerCase(), o = []; if (s.includes('aci')) o.push('ACI'); if (s.includes('nx-os') || s.includes('nxos')) o.push('NX-OS'); return o; }
+    function useCaseBuckets(str) {
+        let s = (str || '').toLowerCase(), o = [];
+        if (s.includes('ai/ml') || s.includes('ai-ml') || s.includes('ai scale') || s.includes('ai cluster')) o.push('AI/ML');
+        if (s.includes('spine')) o.push('Spine');
+        if (s.includes('leaf') || s.includes('tor')) o.push('Leaf');
+        if (s.includes('access') || s.includes('poe')) o.push('Access');
+        if (s.includes('san') || s.includes('storage') || s.includes('fcip')) o.push('SAN');
+        if (s.includes('services') || s.includes('smart switch')) o.push('Services');
+        return o;
+    }
     function slotLimit(str) { let m = (str || '').match(/\d+/); return m ? parseInt(m[0]) : 0; }
 
     function parseSwitch(row) {
@@ -187,7 +211,7 @@
             osRaw: (row['OS/Mode'] || '').trim(), osModes: osModes(row['OS/Mode']),
             features: (row['Features'] || '').split(',').map(s => s.trim()).filter(Boolean),
             maxPorts: (row['Maximum possible port number'] || '').trim(), desc: (row['Short description'] || '').trim(),
-            useCase: (row['Use case'] || '').trim(), datasheet: (row['Datasheet link'] || '#').trim() || '#'
+            useCase: (row['Use case'] || '').trim(), useCases: useCaseBuckets(row['Use case']), datasheet: (row['Datasheet link'] || '#').trim() || '#'
         };
     }
 
@@ -211,7 +235,7 @@
         if (af.role.length && !af.role.some(r => sw.roles.includes(r))) return false;
         if (af.dlspeed.length && !af.dlspeed.some(s => sw.dlSpeeds.includes(s))) return false;
         if (af.uplink.length && !af.uplink.some(u => sw.ulSpeeds.includes(u))) return false;
-        if (af.os.length && !af.os.some(o => sw.osModes.includes(o))) return false;
+        if (af.usecase.length && !af.usecase.some(u => sw.useCases.includes(u))) return false;
         if (af.feature.length && !af.feature.every(f => sw.features.some(x => x.toLowerCase().includes(f.toLowerCase())))) return false;
         return true;
     }

@@ -38,11 +38,13 @@
         .switch-family:hover .sw-body { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,.12); }
         .sw-body.brand-Meraki { border-left-color: var(--meraki-green); }
         .sw-body.brand-Unified { border-left-color: var(--cisco-purple); }
-        .sw-body.rack { width: 80%; height: 40px; }
-        .sw-body.desktop { width: 46%; height: 36px; border-radius: 12px; }
-        .sw-body.rugged { width: 62%; height: 46px; background: #2c3e50; border-color: #1a252f; }
+        .sw-body.rack { height: 40px; }
+        .sw-body.desktop { height: 36px; border-radius: 12px; }
+        .sw-body.rugged { height: 46px; background: #2c3e50; border-color: #1a252f; }
         .sw-body.rugged .sw-tick { background: #8aa0b5; }
         .sw-body.rugged .sw-tick.up { background: #cfd8e3; }
+        /* Width scales with the series' max port count (8-port small -> 48-port large) */
+        .sw-body.sw-w1 { width: 30%; } .sw-body.sw-w2 { width: 42%; } .sw-body.sw-w3 { width: 56%; } .sw-body.sw-w4 { width: 76%; } .sw-body.sw-w5 { width: 92%; }
         .sw-body.chassis { width: 72%; height: 86px; flex-direction: column; align-items: stretch; padding: 6px; gap: 4px; background: #3a3f44; border-color: #222; }
         .sw-led { width: 8px; height: 8px; border-radius: 50%; background: var(--cisco-blue); box-shadow: 0 0 6px rgba(4,159,217,.8); flex-shrink: 0; }
         .sw-body.brand-Meraki .sw-led { background: var(--meraki-green); box-shadow: 0 0 6px rgba(120,190,32,.8); }
@@ -51,8 +53,14 @@
         .sw-ports.right { justify-content: flex-end; flex: 0 0 auto; }
         .sw-tick { width: 5px; height: 14px; background: #aeb6bf; border-radius: 1px; }
         .sw-tick.up { background: #6c7a89; height: 18px; }
-        .sw-slot { flex: 1; background: #E2E4E6; border-radius: 2px; display: flex; align-items: center; padding: 0 6px; gap: 3px; overflow: hidden; }
-        .sw-slot-port { width: 5px; height: 5px; background: #999; border-radius: 1px; }
+        /* Chassis interior: stacked line cards (ejector + port row + status LED) */
+        .sw-linecard { flex: 1; background: #d4dae0; border: 1px solid #aab2bb; border-radius: 2px; display: flex; align-items: center; gap: 6px; padding: 0 6px; }
+        .lc-ejector { width: 4px; height: 55%; background: #7a8591; border-radius: 1px; flex-shrink: 0; }
+        .lc-ports { display: flex; gap: 3px; flex: 1; }
+        .lc-ports span { width: 5px; height: 5px; background: #5b6670; border-radius: 1px; }
+        .lc-led { width: 6px; height: 6px; border-radius: 50%; background: var(--cisco-blue); box-shadow: 0 0 4px rgba(4,159,217,.7); flex-shrink: 0; }
+        .sw-body.brand-Meraki .lc-led { background: var(--meraki-green); box-shadow: 0 0 4px rgba(120,190,32,.7); }
+        .sw-body.brand-Unified .lc-led { background: var(--cisco-purple); box-shadow: 0 0 4px rgba(111,66,193,.7); }
         .sw-meta { font-size: 12px; color: #777; line-height: 1.5; margin-top: 8px; }
         .sw-meta .meta-badge { display: inline-block; font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: .5px; padding: 2px 7px; border-radius: 10px; background: #eef0f2; color: #555; margin-right: 5px; }
         @media (max-width: 1150px) { .sw-body.rack, .sw-body.chassis, .sw-body.rugged, .sw-body.desktop { width: 100%; } }
@@ -321,19 +329,24 @@
         }
     }
 
-    function getSwGraphic(m) {
+    function getSwGraphic(m, repPorts) {
         const brand = brandOf(m);
         const t = (m.type || '').toLowerCase();
         let body;
         if (t === 'chassis') {
-            let slot = '<div class="sw-slot">' + '<div class="sw-slot-port"></div>'.repeat(14) + '</div>';
-            body = '<div class="sw-body chassis brand-' + brand + '">' + slot.repeat(4) + '</div>';
+            // Switch face with stacked line cards (ejector handle + port row + status LED)
+            let card = '<div class="sw-linecard"><span class="lc-ejector"></span><div class="lc-ports">' +
+                '<span></span>'.repeat(12) + '</div><span class="lc-led"></span></div>';
+            body = '<div class="sw-body chassis brand-' + brand + '">' + card.repeat(4) + '</div>';
         } else {
+            // Size by the series' representative (max) port count
+            let p = repPorts || m.ports || 8;
+            let wcls = p <= 8 ? 'sw-w1' : p <= 16 ? 'sw-w2' : p <= 28 ? 'sw-w3' : p <= 48 ? 'sw-w4' : 'sw-w5';
             let cls = (t === 'desktop') ? 'desktop' : (t === 'rugged') ? 'rugged' : 'rack';
-            let dn = (t === 'desktop') ? 8 : 12;
+            let dn = Math.max(4, Math.min(Math.round(p / 2), 24));
             let down = '<div class="sw-ports">' + '<div class="sw-tick"></div>'.repeat(dn) + '</div>';
             let up = '<div class="sw-ports right">' + '<div class="sw-tick up"></div>'.repeat(4) + '</div>';
-            body = '<div class="sw-body ' + cls + ' brand-' + brand + '"><div class="sw-led"></div>' + down + up + '</div>';
+            body = '<div class="sw-body ' + cls + ' ' + wcls + ' brand-' + brand + '"><div class="sw-led"></div>' + down + up + '</div>';
         }
         // Summary below the image
         let topUplink = m.uplinks.length ? m.uplinks[m.uplinks.length - 1] : '';
@@ -350,8 +363,9 @@
         const wrapper = document.createElement('div');
         wrapper.className = 'switch-family';
         const id = Shared.cssId(supertype);
+        const repPorts = Math.max.apply(null, members.map(m => m.ports || 0));
         wrapper.innerHTML =
-            '<div onclick="toggleDrawer(\'' + id + '\')"><div class="switch-family-title">' + supertype + '</div>' + getSwGraphic(members[0]) + '</div>' +
+            '<div onclick="toggleDrawer(\'' + id + '\')"><div class="switch-family-title">' + supertype + '</div>' + getSwGraphic(members[0], repPorts) + '</div>' +
             '<div class="drawer" id="drawer-' + id + '"><div style="font-weight:bold;margin-bottom:10px;">' + Shared.t('drawer-select') + '</div>' +
                 '<div class="sku-list">' +
                     members.map(m => {
